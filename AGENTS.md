@@ -25,6 +25,7 @@ High-performance rendering is a goal, but clarity and incremental learning shoul
 
 # Implementation and verification
 
+- Leave compilation, running executables, and testing to the user unless explicitly asked to execute those commands.
 - Keep dependencies minimal and explain the role of each new dependency.
 - Document build and run instructions as the workflow is established. 
 - Do not assume compilers, CUDA, SDL3, or environment configuration are already present.

@@ -3,6 +3,9 @@
 /out/
 cmake-build-*/
 
+# Downloaded dependencies
+/deps/
+
 # Object files and dependency files
 *.o
 *.obj
