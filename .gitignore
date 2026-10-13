@@ -1,0 +1,70 @@
+# Build directories
+/build/
+/out/
+cmake-build-*/
+
+# Object files and dependency files
+*.o
+*.obj
+*.d
+*.lo
+
+# Executables and libraries
+*.exe
+*.out
+*.app/
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.la
+
+# Precompiled headers
+*.gch
+*.pch
+*.ipch
+
+# MSVC intermediate files and debug symbols
+*.pdb
+*.idb
+*.ilk
+*.exp
+*.res
+*.tlog
+*.lastbuildstate
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+
+# Coverage and profiling output
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
+
+# Visual Studio local state
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.opendb
+
+# Vim/Neovim temporary files
+*.swp
+*.swo
+*~
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
