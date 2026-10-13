@@ -1,8 +1,14 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include <cmath>
 #include <cstddef>
+#include <random>
 #include <string>
+
+constexpr Uint32 NUM_TRIANGLES = 1000;
+constexpr Uint32 NUM_VERTICES = 3 * NUM_TRIANGLES;
+constexpr float TRIANGLE_SCALE = 0.05f;
 
 struct Vertex {
     float position[2];
@@ -82,7 +88,7 @@ static SDL_GPUGraphicsPipeline* create_triangle_pipeline(SDL_GPUDevice* device, 
 
 static SDL_GPUBuffer* create_triangle_buffer(SDL_GPUDevice* device)
 {
-    const Uint32 size = 3 * sizeof(Vertex);
+    const Uint32 size = NUM_VERTICES * sizeof(Vertex);
     SDL_GPUBufferCreateInfo buffer_info = {};
     buffer_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
     buffer_info.size = size;
@@ -107,10 +113,33 @@ static SDL_GPUBuffer* create_triangle_buffer(SDL_GPUDevice* device)
         return nullptr;
     }
 
-    // Positions now use normalized coordinates: the center is (0, 0), and the edges are -1 and +1.
-    vertices[0] = {{0.0f, 2.0f / 3.0f}, {1.0f, 0.0f, 0.0f, 1.0f}};
-    vertices[1] = {{-0.5f, -2.0f / 3.0f}, {0.0f, 1.0f, 0.0f, 1.0f}};
-    vertices[2] = {{0.5f, -2.0f / 3.0f}, {0.0f, 0.0f, 1.0f, 1.0f}};
+    const Vertex triangle[] = {
+        {{0.0f, 2.0f / 3.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+        {{-0.5f, -2.0f / 3.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+        {{0.5f, -2.0f / 3.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+    };
+
+    // Seed once per startup, then choose one offset and angle for each triangle.
+    std::mt19937 random_engine{std::random_device{}()};
+    std::uniform_real_distribution<float> random_offset(-1.0f, 1.0f);
+    std::uniform_real_distribution<float> random_angle(0.0f, 2.0f * 3.14159265f);
+    for (Uint32 i = 0; i < NUM_TRIANGLES; ++i) {
+        const float offset_x = random_offset(random_engine);
+        const float offset_y = random_offset(random_engine);
+        const float angle = random_angle(random_engine);
+        const float cosine = std::cos(angle);
+        const float sine = std::sin(angle);
+
+        for (Uint32 j = 0; j < 3; ++j) {
+            Vertex vertex = triangle[j];
+            const float x = vertex.position[0] * TRIANGLE_SCALE;
+            const float y = vertex.position[1] * TRIANGLE_SCALE;
+            // Rotate around the triangle's local origin, then translate; keep the vertex color unchanged.
+            vertex.position[0] = cosine * x - sine * y + offset_x;
+            vertex.position[1] = sine * x + cosine * y + offset_y;
+            vertices[3 * i + j] = vertex;
+        }
+    }
     SDL_UnmapGPUTransferBuffer(device, transfer);
 
     SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(device);
@@ -217,7 +246,7 @@ int main(int, char**)
         SDL_BindGPUGraphicsPipeline(render_pass, pipeline);
         SDL_GPUBufferBinding binding = {vertex_buffer, 0};
         SDL_BindGPUVertexBuffers(render_pass, 0, &binding, 1);
-        SDL_DrawGPUPrimitives(render_pass, 3, 1, 0, 0);
+        SDL_DrawGPUPrimitives(render_pass, NUM_VERTICES, 1, 0, 0);
         SDL_EndGPURenderPass(render_pass);
 
         // Submission executes the commands and presents the acquired swapchain image.
