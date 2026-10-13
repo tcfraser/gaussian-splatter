@@ -13,7 +13,7 @@ mkdir build
 cmd.exe /d /c call 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat' \
     '&&' cl /nologo /std:c++17 /EHsc /W4 \
     '/Ideps\SDL3-3.4.18\include' \
-    '/Fobuild\hello_world.obj' '/Febuild\hello_world.exe' hello_world.cpp 'deps\SDL3-3.4.18\lib\x64\SDL3.lib' \
+    '/Fobuild\main.obj' '/Febuild\main.exe' 'src\main.cpp' 'deps\SDL3-3.4.18\lib\x64\SDL3.lib' \
     /link /SUBSYSTEM:CONSOLE
 
 
