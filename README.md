@@ -1,12 +1,8 @@
 # Gaussian splat renderer
 
-<video src="outputs/summer%20lilac.mp4" controls muted loop playsinline width="800"></video>
 
-[Watch the Summer Lilac example (MP4)](<outputs/summer lilac.mp4>)
 
-| Plant | The Fruit Bowl |
-|---|---|
-| ![Plant rendered as Gaussian splats](outputs/plant.png) | ![Fruit bowl rendered as Gaussian splats](<outputs/the fruit bowl.png>) |
+
 
 ## Overview
 
@@ -24,6 +20,11 @@ From the repository directory in WSL Bash, build and pass the path to the `.spla
 ```bash
 ./build.sh && ./build/main.exe "examples/plant/plant.splat"
 ```
+## Examples
+
+| Plant | The Fruit Bowl | The Summer Lilac |
+|---|---|---|
+| ![Plant rendered as Gaussian splats](outputs/plant.png) | ![Fruit bowl rendered as Gaussian splats](<outputs/the fruit bowl.png>) | https://github.com/user-attachments/assets/05344d56-851a-4d4c-a0be-42ef27c34fa8 |
 
 ## Examples acknowledgements
 
