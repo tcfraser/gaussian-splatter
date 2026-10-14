@@ -8,11 +8,19 @@ struct ComputeShader {
     size_t code_size = 0;
 };
 
+struct RadixSortShaders {
+    ComputeShader histogram;
+    ComputeShader scan_blocks;
+    ComputeShader scan_sums;
+    ComputeShader scatter;
+};
+
 // Owns the graphics shader handles and compute bytecode; demos borrow them when creating pipelines.
 struct Shaders {
     SDL_GPUShader* triangle_vertex = nullptr;
     SDL_GPUShader* triangle_fragment = nullptr;
     ComputeShader project_splat_compute;
+    RadixSortShaders radix_sort;
     SDL_GPUShader* splat_quad_vertex = nullptr;
     SDL_GPUShader* draw_splat_fragment = nullptr;
 };

@@ -106,9 +106,14 @@ int main(int, char**)
         update_camera_projection(demo.camera, width, height);
 
         // Let the renderer upload the camera and record its rendering into this frame's texture.
-        render_splats(demo.renderer, commands, swapchain_texture, demo.camera);
+        if (!render_splats(demo.renderer, commands, swapchain_texture, demo.camera)) {
+            SDL_Log("Rendering failed: %s", SDL_GetError());
+            exit_code = 1;
+            running = false;
+        }
 
         // Submission executes the commands and presents the acquired swapchain image.
+        // An acquired swapchain image must be submitted even if recording failed; SDL forbids cancellation here.
         if (!SDL_SubmitGPUCommandBuffer(commands)) {
             SDL_Log("SDL_SubmitGPUCommandBuffer failed: %s", SDL_GetError());
             exit_code = 1;

@@ -1,5 +1,7 @@
 #include "splat_varyings.hlsli"
 #include "camera.hlsli"
+#include "projected_splat.hlsli"
+#include "radix_sort.hlsli"
 
 // Build a quad from the center and bounds already computed for this splat.
 // The shared uniform data for describing the camera
@@ -11,16 +13,14 @@ cbuffer CameraUniform : register(b0, space1)
     Camera camera;
 };
 
-// The compute shader's output buffer supplies these attributes, advancing once per splat instance.
-struct ProjectedSplatInput {
-    float4 color_opacity : TEXCOORD0;
-    float3 inverse_covariance : TEXCOORD1;
-    float2 center : TEXCOORD2;
-    float2 half_extent : TEXCOORD3;
-};
+// Vertex storage buffers: follow the sorted index rather than moving the projected records themselves.
+ByteAddressBuffer projected_splats : register(t0, space0);
+ByteAddressBuffer render_order : register(t1, space0);
 
-SplatVaryings main(ProjectedSplatInput input, uint vertex_id : SV_VertexID)
+SplatVaryings main(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
 {
+    SortPair pair = render_order.Load<SortPair>(instance_id * sizeof(SortPair));
+    ProjectedSplat input = projected_splats.Load<ProjectedSplat>(pair.index * sizeof(ProjectedSplat));
     SplatVaryings output = (SplatVaryings)0;
     // Invalid splats collapse to a point outside the clip volume.
     output.position = float4(0.0, 0.0, -1.0, 1.0);

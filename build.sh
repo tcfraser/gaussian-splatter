@@ -24,11 +24,15 @@ cmd.exe /d /c call 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildToo
     '&&' 'deps\dxc\bin\x64\dxc.exe' -T vs_6_2 -HV 2021 -E main -Fo 'build\triangle.vert.dxil' 'src\shaders\triangle.vert.hlsl' \
     '&&' 'deps\dxc\bin\x64\dxc.exe' -T ps_6_2 -HV 2021 -E main -Fo 'build\triangle.frag.dxil' 'src\shaders\triangle.frag.hlsl' \
     '&&' 'deps\dxc\bin\x64\dxc.exe' -T cs_6_2 -HV 2021 -E main -Fo 'build\project_splat.comp.dxil' 'src\shaders\project_splat.comp.hlsl' \
+    '&&' 'deps\dxc\bin\x64\dxc.exe' -T cs_6_2 -HV 2021 -E histogram -Fo 'build\radix_histogram.comp.dxil' 'src\shaders\radix_sort.comp.hlsl' \
+    '&&' 'deps\dxc\bin\x64\dxc.exe' -T cs_6_2 -HV 2021 -E scan_blocks -Fo 'build\radix_scan_blocks.comp.dxil' 'src\shaders\radix_sort.comp.hlsl' \
+    '&&' 'deps\dxc\bin\x64\dxc.exe' -T cs_6_2 -HV 2021 -E scan_sums -Fo 'build\radix_scan_sums.comp.dxil' 'src\shaders\radix_sort.comp.hlsl' \
+    '&&' 'deps\dxc\bin\x64\dxc.exe' -T cs_6_2 -HV 2021 -E scatter -Fo 'build\radix_scatter.comp.dxil' 'src\shaders\radix_sort.comp.hlsl' \
     '&&' 'deps\dxc\bin\x64\dxc.exe' -T vs_6_2 -HV 2021 -E main -Fo 'build\splat_quad.vert.dxil' 'src\shaders\splat_quad.vert.hlsl' \
     '&&' 'deps\dxc\bin\x64\dxc.exe' -T ps_6_2 -HV 2021 -E main -Fo 'build\draw_splat.frag.dxil' 'src\shaders\draw_splat.frag.hlsl' \
     '&&' cl /nologo /std:c++17 /EHsc /W4 \
     '/Ideps\SDL3-3.4.18\include' \
-    /Fobuild/ '/Febuild\main.exe' 'src\main.cpp' 'src\demo.cpp' 'src\camera.cpp' 'src\shader.cpp' 'src\triangle_demo.cpp' 'src\splat_format_handler.cpp' 'src\splat_renderer.cpp' \
+    /Fobuild/ '/Febuild\main.exe' 'src\main.cpp' 'src\demo.cpp' 'src\camera.cpp' 'src\shader.cpp' 'src\triangle_demo.cpp' 'src\splat_format_handler.cpp' 'src\splat_renderer.cpp' 'src\radix_sort.cpp' \
     'deps\SDL3-3.4.18\lib\x64\SDL3.lib' \
     /link /SUBSYSTEM:CONSOLE
 

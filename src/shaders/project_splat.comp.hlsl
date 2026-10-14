@@ -1,4 +1,6 @@
 #include "camera.hlsli"
+#include "projected_splat.hlsli"
+#include "radix_sort.hlsli"
 
 // The shared uniform data for describing the camera.
 // -- b0 indicates a constant buffer bound to slot 0.
@@ -11,6 +13,7 @@ cbuffer CameraUniform : register(b0, space2)
 // SDL's Direct3D storage buffers use raw byte access: t0/space0 is the input, u0/space1 is the output.
 ByteAddressBuffer splats : register(t0, space0);
 RWByteAddressBuffer projected_splats : register(u0, space1);
+RWByteAddressBuffer sort_pairs : register(u1, space1);
 
 // These structs define the buffer layouts for typed loads and stores; keep them in sync with the C++ structs.
 struct CovarianceSplat {
@@ -18,13 +21,6 @@ struct CovarianceSplat {
     uint rgba;           // Four bytes: red, green, blue, opacity, from least to most significant.
     float3 covariance_a; // xx, xy, xz
     float3 covariance_b; // yy, yz, zz
-};
-
-struct ProjectedSplat {
-    float4 color_opacity;
-    float3 inverse_covariance;
-    float2 center;
-    float2 half_extent;
 };
 
 ProjectedSplat project_splat(CovarianceSplat input)
@@ -42,7 +38,8 @@ ProjectedSplat project_splat(CovarianceSplat input)
 
     // Clip by the splat's center; zero opacity tells the vertex shader to collapse its quad.
     ProjectedSplat output = (ProjectedSplat)0;
-    if (view_position.z <= camera.near_plane || view_position.z >= camera.far_plane || color_opacity.a <= 0.0) {
+    output.depth_key = 0xffffffffu; // Rejected splats sort last and remain invisible.
+    if (!all(isfinite(view_position)) || view_position.z <= max(camera.near_plane, 0.0) || view_position.z >= camera.far_plane || color_opacity.a <= 0.0) {
         return output;
     }
 
@@ -73,7 +70,7 @@ ProjectedSplat project_splat(CovarianceSplat input)
     covariance_xx += 0.3;
     covariance_yy += 0.3;
     float determinant = covariance_xx * covariance_yy - covariance_xy * covariance_xy;
-    if (covariance_xx <= 0.0 || covariance_yy <= 0.0 || determinant <= 0.000001) {
+    if (!isfinite(determinant) || covariance_xx <= 0.0 || covariance_yy <= 0.0 || determinant <= 0.000001) {
         return output;
     }
 
@@ -83,6 +80,9 @@ ProjectedSplat project_splat(CovarianceSplat input)
     output.center = camera.principal_point + projected_scale * float2(view_position.x, -view_position.y);
     output.color_opacity = color_opacity;
     output.inverse_covariance = float3(covariance_yy, -covariance_xy, covariance_xx) / determinant;
+
+    // Positive finite float bits increase with depth; complementing them makes an ascending uint sort draw far to near.
+    output.depth_key = ~asuint(view_position.z);
     return output;
 }
 
@@ -107,4 +107,10 @@ void main(uint3 thread_id : SV_DispatchThreadID)
 
     // Write the whole result even for invalid splats, so no result from a previous frame survives.
     projected_splats.Store<ProjectedSplat>(splat_id * sizeof(ProjectedSplat), output);
+
+    // Write the (key, index) pair so splats can be sorted by their depth keys in radix_sort.comp
+    SortPair pair;
+    pair.key = output.depth_key;
+    pair.index = splat_id;
+    sort_pairs.Store<SortPair>(splat_id * sizeof(SortPair), pair);
 }

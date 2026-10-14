@@ -13,7 +13,7 @@ static void* load_shader_code(const char* filename, size_t* size)
     return SDL_LoadFile(path.c_str(), size);
 }
 
-static SDL_GPUShader* load_shader(SDL_GPUDevice* device, const char* filename, SDL_GPUShaderStage stage, Uint32 num_uniform_buffers = 0)
+static SDL_GPUShader* load_shader(SDL_GPUDevice* device, const char* filename, SDL_GPUShaderStage stage, Uint32 num_uniform_buffers = 0, Uint32 num_storage_buffers = 0)
 {
     size_t size = 0;
     void* code = load_shader_code(filename, &size);
@@ -28,10 +28,16 @@ static SDL_GPUShader* load_shader(SDL_GPUDevice* device, const char* filename, S
     info.format = SDL_GPU_SHADERFORMAT_DXIL;
     info.stage = stage;
     info.num_uniform_buffers = num_uniform_buffers;
-    // These shaders use vertex attributes and optional uniforms; other resource counts remain zero.
+    info.num_storage_buffers = num_storage_buffers;
     SDL_GPUShader* shader = SDL_CreateGPUShader(device, &info);
     SDL_free(code);
     return shader;
+}
+
+static bool load_compute_shader(const char* filename, ComputeShader& shader)
+{
+    shader.code = load_shader_code(filename, &shader.code_size);
+    return shader.code != nullptr;
 }
 
 bool load_shaders(SDL_GPUDevice* device, Shaders& shaders)
@@ -51,7 +57,14 @@ bool load_shaders(SDL_GPUDevice* device, Shaders& shaders)
         destroy_shaders(device, shaders);
         return false;
     }
-    shaders.splat_quad_vertex = load_shader(device, "splat_quad.vert.dxil", SDL_GPU_SHADERSTAGE_VERTEX, 1);
+    if (!load_compute_shader("radix_histogram.comp.dxil", shaders.radix_sort.histogram)
+        || !load_compute_shader("radix_scan_blocks.comp.dxil", shaders.radix_sort.scan_blocks)
+        || !load_compute_shader("radix_scan_sums.comp.dxil", shaders.radix_sort.scan_sums)
+        || !load_compute_shader("radix_scatter.comp.dxil", shaders.radix_sort.scatter)) {
+        destroy_shaders(device, shaders);
+        return false;
+    }
+    shaders.splat_quad_vertex = load_shader(device, "splat_quad.vert.dxil", SDL_GPU_SHADERSTAGE_VERTEX, 1, 2);
     if (!shaders.splat_quad_vertex) {
         destroy_shaders(device, shaders);
         return false;
@@ -73,6 +86,10 @@ void destroy_shaders(SDL_GPUDevice* device, Shaders& shaders)
         SDL_ReleaseGPUShader(device, shaders.splat_quad_vertex);
     }
     SDL_free(shaders.project_splat_compute.code);
+    SDL_free(shaders.radix_sort.histogram.code);
+    SDL_free(shaders.radix_sort.scan_blocks.code);
+    SDL_free(shaders.radix_sort.scan_sums.code);
+    SDL_free(shaders.radix_sort.scatter.code);
     if (shaders.triangle_fragment) {
         SDL_ReleaseGPUShader(device, shaders.triangle_fragment);
     }
