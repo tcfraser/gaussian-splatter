@@ -17,9 +17,20 @@ From the repository directory in WSL Bash, build and pass the path to the `.spla
 ./build.sh && ./build/main.exe "examples/plant/plant.splat"
 ```
 
-The application requires one file path; relative paths are resolved from the current working directory, and absolute paths must use Windows syntax because the renderer is a native Windows executable.
-The demo centers the loaded splats at the world origin, fits the camera distance and clipping planes to their size, and orbits once every ten seconds while looking at the origin.
-It keeps the existing convention that input data has -Y pointing up; the `.splat` format does not store an up-axis convention.
+## Examples acknowledgements
+
+Thank you to the following authors for making their examples available.
+
+| Example name | Author names | Source (original) | License |
+|---|---|---|---|
+| [Houseplant](examples/plant/plant.splat) | [Marcel Padilla](https://marcelpadilla.com/) | [Marcel Padilla's splats repository](https://github.com/marcelpadilla/splats/tree/c3e5ec0a8ddb3ab26f28a067a29d272fe1a23411/data/plant) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [The Fruit Bowl](<examples/the fruit bowl/the fruit bowl.splat>) | [SuperDelphi](https://superspl.at/user/superdelphi) | [Original SuperSplat scene](https://superspl.at/scene/d8ba72a6) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [LEGO Bonsai Tree v2](<examples/lego bonsai tree/lego bonsai tree.splat>) | [omar egeh](https://superspl.at/user/omaregeh) | [Original SuperSplat scene](https://superspl.at/scene/14d76a85) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| [Summer lilac (Schmetterlingsflieder)](<examples/summer lilac/summer lilac.splat>) | [Alfred Duemlein](https://superspl.at/user/alfred2010) | [Original SuperSplat scene](https://superspl.at/scene/fa93ef59) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+
+The [original LEGO Bonsai Tree scene](https://superspl.at/scene/14d76a85) additionally credits its source photographs and camera data to the "bonsai" capture from [Mip-NeRF 360](https://jonbarron.info/mipnerf360/), by Jonathan T. Barron, Ben Mildenhall, Dor Verbin, Pratul P. Srinivasan, and Peter Hedman.
+
+
 
 ## The `.splat` format
 
@@ -47,16 +58,4 @@ The file size must be a multiple of 32 bytes, and the splat count is `file_size 
 - **Direct3D 12 compatible GPU and Windows graphics driver with Shader Model 6.2 support:** Install the current Windows driver from your GPU manufacturer (NVIDIA for the intended setup).
 - **SDL3 3.4.18:** Download [SDL3-devel-3.4.18-VC.zip](https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-devel-3.4.18-VC.zip) and extract it into `deps/`, so the headers are at `deps/SDL3-3.4.18/include/SDL3/` and the x64 library and DLL are at `deps/SDL3-3.4.18/lib/x64/`.
 
-## Examples acknowledgements
-
-Thank you to the following authors for making their examples available.
-
-| Example name | Author names | Source (original) | License |
-|---|---|---|---|
-| [Houseplant](examples/plant/plant.splat) | Marcel Padilla | [Marcel Padilla's splats repository](https://github.com/marcelpadilla/splats/tree/c3e5ec0a8ddb3ab26f28a067a29d272fe1a23411/data/plant) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| [The Fruit Bowl](<examples/the fruit bowl/the fruit bowl.splat>) | [SuperDelphi](https://superspl.at/user/superdelphi) | [Original SuperSplat scene](https://superspl.at/scene/d8ba72a6) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| [LEGO Bonsai Tree v2](<examples/lego bonsai tree/lego bonsai tree.splat>) | [omar egeh](https://superspl.at/user/omaregeh) | [Original SuperSplat scene](https://superspl.at/scene/14d76a85) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| [Summer lilac (Schmetterlingsflieder)](<examples/summer lilac/summer lilac.splat>) | [Alfred Duemlein](https://superspl.at/user/alfred2010) | [Original SuperSplat scene](https://superspl.at/scene/fa93ef59) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-
-The [original LEGO Bonsai Tree scene](https://superspl.at/scene/14d76a85) additionally credits its source photographs and camera data to the "bonsai" capture from [Mip-NeRF 360](https://jonbarron.info/mipnerf360/), by Jonathan T. Barron, Ben Mildenhall, Dor Verbin, Pratul P. Srinivasan, and Peter Hedman.
 
