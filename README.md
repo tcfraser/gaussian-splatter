@@ -15,3 +15,13 @@ From the repository directory on a Windows drive, run in WSL Bash:
 ```bash
 ./build.sh
 ```
+
+## Acknowledgements
+
+### Plant example
+
+The [plant example](examples/plant/plant.splat), titled "Houseplant", was created by **Marcel Padilla** and comes from his [splats repository](https://github.com/marcelpadilla/splats).
+This specific plant example is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the other objects in Marcel's splat collection have their own licenses.
+Thank you to Marcel for making this collection available.
+
+
