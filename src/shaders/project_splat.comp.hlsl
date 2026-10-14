@@ -13,10 +13,9 @@ ByteAddressBuffer splats : register(t0, space0);
 RWByteAddressBuffer projected_splats : register(u0, space1);
 
 // These structs define the buffer layouts for typed loads and stores; keep them in sync with the C++ structs.
-struct GaussianSplat {
+struct CovarianceSplat {
     float3 position;
-    float3 color;
-    float opacity;
+    uint rgba;           // Four bytes: red, green, blue, opacity, from least to most significant.
     float3 covariance_a; // xx, xy, xz
     float3 covariance_b; // yy, yz, zz
 };
@@ -24,16 +23,22 @@ struct GaussianSplat {
 struct ProjectedSplat {
     float4 color_opacity;
     float3 inverse_covariance;
-    float padding; // Matches the padding before center in the C++ ProjectedSplat.
     float2 center;
     float2 half_extent;
 };
 
-ProjectedSplat project_splat(GaussianSplat input)
+ProjectedSplat project_splat(CovarianceSplat input)
 {
+    // Keep RGBA packed in storage; expand the channels only while computing this splat's projection.
+    float4 color_opacity = float4(
+        input.rgba & 255u,
+        (input.rgba >> 8) & 255u,
+        (input.rgba >> 16) & 255u,
+        (input.rgba >> 24) & 255u) / 255.0;
+
     // Invalid splats produce zero opacity, which tells the vertex shader to collapse their quads.
     ProjectedSplat output = (ProjectedSplat)0;
-    if (input.position.z <= near_plane || input.opacity <= 0.0) {
+    if (input.position.z <= near_plane || color_opacity.a <= 0.0) {
         return output;
     }
 
@@ -69,7 +74,7 @@ ProjectedSplat project_splat(GaussianSplat input)
     // -- three standard deviations suffice here.
     output.half_extent = 3.0 * sqrt(float2(covariance_xx, covariance_yy));
     output.center = 0.5 * viewport_size + projected_scale * float2(input.position.x, -input.position.y);
-    output.color_opacity = float4(input.color, input.opacity);
+    output.color_opacity = color_opacity;
     output.inverse_covariance = float3(covariance_yy, -covariance_xy, covariance_xx) / determinant;
     return output;
 }
@@ -83,12 +88,12 @@ void main(uint3 thread_id : SV_DispatchThreadID)
     uint splat_id = thread_id.x;
 
     // We dispatch whole groups of 64 threads, so any thread past the last splat does nothing.
-    if (splat_id >= byte_count / sizeof(GaussianSplat)) {
+    if (splat_id >= byte_count / sizeof(CovarianceSplat)) {
         return;
     }
 
     // sizeof locates the record; DXC derives its field offsets and reads the whole struct.
-    GaussianSplat input = splats.Load<GaussianSplat>(splat_id * sizeof(GaussianSplat));
+    CovarianceSplat input = splats.Load<CovarianceSplat>(splat_id * sizeof(CovarianceSplat));
 
     // Do the actual computation for the projection
     ProjectedSplat output = project_splat(input);

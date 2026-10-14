@@ -1,11 +1,14 @@
-#include "gaussian_splat.h"
+#include "splat_renderer.h"
+#include "splat_format.h"
 
 #include <cmath>
 #include <cstddef>
-#include <random>
+#include <cstring>
+#include <vector>
 
-constexpr Uint32 NUM_SPLATS = 1000;
 constexpr Uint32 PROJECTION_THREADS = 64; // Matches numthreads in project_splat.comp.hlsl.
+// This renderer dispatches along X only; Direct3D 12 allows at most 65,535 groups along one axis.
+constexpr Uint32 MAX_SPLATS = 65535 * PROJECTION_THREADS;
 constexpr float PI = 3.14159265f;
 
 // Matches the 16-byte Projection uniform buffer in the compute and vertex shaders.
@@ -19,7 +22,6 @@ struct Projection {
 struct ProjectedSplat {
     float color_opacity[4];
     float inverse_covariance[3];
-    float padding;
     float center[2];
     float half_extent[2];
 };
@@ -84,9 +86,10 @@ static SDL_GPUGraphicsPipeline* create_splat_pipeline(SDL_GPUDevice* device, SDL
     return SDL_CreateGPUGraphicsPipeline(device, &info);
 }
 
-static SDL_GPUBuffer* create_splat_buffer(SDL_GPUDevice* device)
+static SDL_GPUBuffer* create_splat_buffer(SDL_GPUDevice* device, const std::vector<CovarianceSplat>& splats)
 {
-    const Uint32 size = NUM_SPLATS * sizeof(GaussianSplat);
+    // init_splat_renderer checks the count before either GPU buffer size is narrowed to Uint32.
+    const Uint32 size = static_cast<Uint32>(splats.size() * sizeof(CovarianceSplat));
     SDL_GPUBufferCreateInfo buffer_info = {};
     buffer_info.usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ;
     buffer_info.size = size;
@@ -103,65 +106,15 @@ static SDL_GPUBuffer* create_splat_buffer(SDL_GPUDevice* device)
         SDL_ReleaseGPUBuffer(device, buffer);
         return nullptr;
     }
-    GaussianSplat* splats = static_cast<GaussianSplat*>(SDL_MapGPUTransferBuffer(device, transfer, false));
-    if (!splats) {
+    void* mapped = SDL_MapGPUTransferBuffer(device, transfer, false);
+    if (!mapped) {
         SDL_ReleaseGPUTransferBuffer(device, transfer);
         SDL_ReleaseGPUBuffer(device, buffer);
         return nullptr;
     }
 
-    // The fixed camera sits at the origin, looks along +Z, and has +Y pointing up.
-    // Covariance diagonal values are variances: squared standard deviations along the ellipsoid's axes.
-    const GaussianSplat base_splat = {
-        {0.0f, 0.0f, 4.0f},
-        {1.0f, 1.0f, 1.0f},
-        {0.7f},
-        {0.07f * 0.07f, 0.0f, 0.0f, 0.025f * 0.025f, 0.0f, 0.035f * 0.035f},
-    };
-    const float variances[] = {base_splat.covariance[0], base_splat.covariance[3], base_splat.covariance[5]};
-
-    std::mt19937 random_engine{std::random_device{}()};
-    std::uniform_real_distribution<float> random_offset(-1.0f, 1.0f);
-    std::uniform_real_distribution<float> random_color(0.15f, 1.0f);
-    std::uniform_real_distribution<float> random_opacity(0.5f, 1.0f);
-    std::uniform_real_distribution<float> random_scale(0.5f, 1.5f);
-    std::uniform_real_distribution<float> random_angle(0.0f, 2.0f * PI);
-    for (Uint32 i = 0; i < NUM_SPLATS; ++i) {
-        GaussianSplat splat = base_splat;
-        splat.position[0] += 2.5f * random_offset(random_engine);
-        splat.position[1] += 1.6f * random_offset(random_engine);
-        splat.position[2] += random_offset(random_engine);
-        for (Uint32 channel = 0; channel < 3; ++channel) {
-            splat.color[channel] *= random_color(random_engine);
-        }
-        splat.opacity[0] *= random_opacity(random_engine);
-
-        const float angle = random_angle(random_engine);
-        const float tilt = random_angle(random_engine);
-        const float scale = random_scale(random_engine);
-        const float c = std::cos(angle);
-        const float s = std::sin(angle);
-        const float ct = std::cos(tilt);
-        const float st = std::sin(tilt);
-        const float rotation[3][3] = {
-            {c * ct, -s, c * st},
-            {s * ct, c, s * st},
-            {-st, 0.0f, ct},
-        };
-
-        // Sigma = R * diag(variances) * transpose(R); rotating positive variances keeps the covariance valid.
-        Uint32 component = 0;
-        for (Uint32 row = 0; row < 3; ++row) {
-            for (Uint32 column = row; column < 3; ++column) {
-                float covariance = 0.0f;
-                for (Uint32 axis = 0; axis < 3; ++axis) {
-                    covariance += rotation[row][axis] * variances[axis] * rotation[column][axis];
-                }
-                splat.covariance[component++] = covariance * scale * scale;
-            }
-        }
-        splats[i] = splat;
-    }
+    // CPU preprocessing is complete; the transfer buffer receives the exact CovarianceSplat bytes.
+    std::memcpy(mapped, splats.data(), size);
     SDL_UnmapGPUTransferBuffer(device, transfer);
 
     // The CPU has filled the transfer buffer; this command buffer asks the GPU to copy it into the compute input buffer.
@@ -172,6 +125,12 @@ static SDL_GPUBuffer* create_splat_buffer(SDL_GPUDevice* device)
         return nullptr;
     }
     SDL_GPUCopyPass* copy_pass = SDL_BeginGPUCopyPass(commands);
+    if (!copy_pass) {
+        SDL_CancelGPUCommandBuffer(commands);
+        SDL_ReleaseGPUTransferBuffer(device, transfer);
+        SDL_ReleaseGPUBuffer(device, buffer);
+        return nullptr;
+    }
     SDL_GPUTransferBufferLocation source = {transfer, 0};
     SDL_GPUBufferRegion destination = {buffer, 0, size};
     SDL_UploadToGPUBuffer(copy_pass, &source, &destination, false);
@@ -187,36 +146,42 @@ static SDL_GPUBuffer* create_splat_buffer(SDL_GPUDevice* device)
     return buffer;
 }
 
-bool init_gaussian_splat(SDL_GPUDevice* device, SDL_GPUTextureFormat target_format, const Shaders& shaders, GaussianSplatDemo& demo)
+bool init_splat_renderer(SDL_GPUDevice* device, SDL_GPUTextureFormat target_format, const Shaders& shaders, const std::vector<CovarianceSplat>& splats, SplatRenderer& renderer)
 {
-    demo.projection_pipeline = create_projection_pipeline(device, shaders);
-    if (!demo.projection_pipeline) {
+    // The dispatch limit also keeps the 40-byte input and 44-byte output buffer sizes within Uint32.
+    if (splats.empty() || splats.size() > MAX_SPLATS) {
+        return SDL_SetError("Expected between 1 and %u splats for the projection dispatch.", MAX_SPLATS);
+    }
+    renderer.splat_count = static_cast<Uint32>(splats.size());
+    renderer.projection_pipeline = create_projection_pipeline(device, shaders);
+    if (!renderer.projection_pipeline) {
+        destroy_splat_renderer(device, renderer);
         return false;
     }
-    demo.pipeline = create_splat_pipeline(device, target_format, shaders);
-    if (!demo.pipeline) {
-        destroy_gaussian_splat(device, demo);
+    renderer.pipeline = create_splat_pipeline(device, target_format, shaders);
+    if (!renderer.pipeline) {
+        destroy_splat_renderer(device, renderer);
         return false;
     }
-    demo.splat_buffer = create_splat_buffer(device);
-    if (!demo.splat_buffer) {
-        destroy_gaussian_splat(device, demo);
+    renderer.splat_buffer = create_splat_buffer(device, splats);
+    if (!renderer.splat_buffer) {
+        destroy_splat_renderer(device, renderer);
         return false;
     }
 
     // Compute writes this buffer, then the graphics pipeline reads it directly as instance data.
     SDL_GPUBufferCreateInfo buffer_info = {};
     buffer_info.usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_BUFFERUSAGE_VERTEX;
-    buffer_info.size = NUM_SPLATS * sizeof(ProjectedSplat);
-    demo.projected_splat_buffer = SDL_CreateGPUBuffer(device, &buffer_info);
-    if (!demo.projected_splat_buffer) {
-        destroy_gaussian_splat(device, demo);
+    buffer_info.size = static_cast<Uint32>(splats.size() * sizeof(ProjectedSplat));
+    renderer.projected_splat_buffer = SDL_CreateGPUBuffer(device, &buffer_info);
+    if (!renderer.projected_splat_buffer) {
+        destroy_splat_renderer(device, renderer);
         return false;
     }
     return true;
 }
 
-void render_gaussian_splat(const GaussianSplatDemo& demo, SDL_GPUCommandBuffer* commands, SDL_GPUTexture* target_texture, Uint32 width, Uint32 height)
+void render_splats(const SplatRenderer& renderer, SDL_GPUCommandBuffer* commands, SDL_GPUTexture* target_texture, Uint32 width, Uint32 height)
 {
     // A 60-degree vertical field of view; using the actual texture height gives focal length in pixels.
     Projection projection = {};
@@ -227,14 +192,14 @@ void render_gaussian_splat(const GaussianSplatDemo& demo, SDL_GPUCommandBuffer* 
 
     SDL_PushGPUComputeUniformData(commands, 0, &projection, sizeof(projection));
     SDL_GPUStorageBufferReadWriteBinding output_binding = {};
-    output_binding.buffer = demo.projected_splat_buffer;
+    output_binding.buffer = renderer.projected_splat_buffer;
     // Every result is overwritten; cycling lets SDL use another allocation if a previous frame still reads this one.
     output_binding.cycle = true;
     SDL_GPUComputePass* compute_pass = SDL_BeginGPUComputePass(commands, nullptr, 0, &output_binding, 1);
-    SDL_BindGPUComputePipeline(compute_pass, demo.projection_pipeline);
-    SDL_BindGPUComputeStorageBuffers(compute_pass, 0, &demo.splat_buffer, 1);
+    SDL_BindGPUComputePipeline(compute_pass, renderer.projection_pipeline);
+    SDL_BindGPUComputeStorageBuffers(compute_pass, 0, &renderer.splat_buffer, 1);
     // Dispatch whole groups of 64 threads; the shader skips any thread past the last splat.
-    SDL_DispatchGPUCompute(compute_pass, (NUM_SPLATS + PROJECTION_THREADS - 1) / PROJECTION_THREADS, 1, 1);
+    SDL_DispatchGPUCompute(compute_pass, (renderer.splat_count + PROJECTION_THREADS - 1) / PROJECTION_THREADS, 1, 1);
     // End the compute pass before rendering so SDL can make its writes visible to the vertex input stage.
     SDL_EndGPUComputePass(compute_pass);
 
@@ -247,27 +212,27 @@ void render_gaussian_splat(const GaussianSplatDemo& demo, SDL_GPUCommandBuffer* 
     target.store_op = SDL_GPU_STOREOP_STORE;
 
     SDL_GPURenderPass* render_pass = SDL_BeginGPURenderPass(commands, &target, 1, nullptr);
-    SDL_BindGPUGraphicsPipeline(render_pass, demo.pipeline);
-    SDL_GPUBufferBinding binding = {demo.projected_splat_buffer, 0};
+    SDL_BindGPUGraphicsPipeline(render_pass, renderer.pipeline);
+    SDL_GPUBufferBinding binding = {renderer.projected_splat_buffer, 0};
     SDL_BindGPUVertexBuffers(render_pass, 0, &binding, 1);
     // Four vertices per splat form two triangles in a strip; each instance starts a new strip.
-    SDL_DrawGPUPrimitives(render_pass, 4, NUM_SPLATS, 0, 0);
+    SDL_DrawGPUPrimitives(render_pass, 4, renderer.splat_count, 0, 0);
     SDL_EndGPURenderPass(render_pass);
 }
 
-void destroy_gaussian_splat(SDL_GPUDevice* device, GaussianSplatDemo& demo)
+void destroy_splat_renderer(SDL_GPUDevice* device, SplatRenderer& renderer)
 {
-    if (demo.projected_splat_buffer) {
-        SDL_ReleaseGPUBuffer(device, demo.projected_splat_buffer);
+    if (renderer.projected_splat_buffer) {
+        SDL_ReleaseGPUBuffer(device, renderer.projected_splat_buffer);
     }
-    if (demo.splat_buffer) {
-        SDL_ReleaseGPUBuffer(device, demo.splat_buffer);
+    if (renderer.splat_buffer) {
+        SDL_ReleaseGPUBuffer(device, renderer.splat_buffer);
     }
-    if (demo.pipeline) {
-        SDL_ReleaseGPUGraphicsPipeline(device, demo.pipeline);
+    if (renderer.pipeline) {
+        SDL_ReleaseGPUGraphicsPipeline(device, renderer.pipeline);
     }
-    if (demo.projection_pipeline) {
-        SDL_ReleaseGPUComputePipeline(device, demo.projection_pipeline);
+    if (renderer.projection_pipeline) {
+        SDL_ReleaseGPUComputePipeline(device, renderer.projection_pipeline);
     }
-    demo = {};
+    renderer = {};
 }

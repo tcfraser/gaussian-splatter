@@ -2,7 +2,66 @@
 #include <SDL3/SDL_main.h>
 
 #include "shader.h"
-#include "gaussian_splat.h"
+#include "splat_format.h"
+#include "splat_format_handler.h"
+#include "splat_renderer.h"
+
+#include <algorithm>
+#include <cstddef>
+#include <string>
+#include <vector>
+
+static bool load_plant(std::vector<CovarianceSplat>& splats)
+{
+    // Resolve the example relative to build/main.exe, independently of the working directory.
+    const char* base_path = SDL_GetBasePath();
+    if (!base_path) {
+        return false;
+    }
+    const std::string path = std::string(base_path) + "../examples/plant/plant.splat";
+    std::string error;
+    std::vector<QuaternionicSplat> quaternionic_splats;
+    if (!load_splat_file(path.c_str(), quaternionic_splats, error)) {
+        return SDL_SetError("%s", error.c_str());
+    }
+    if (!convert_splats(quaternionic_splats, splats, error)) {
+        return SDL_SetError("%s", error.c_str());
+    }
+    SDL_Log("Loaded plant: %zu splats, %zu bytes per file record, %zu bytes per GPU input record.",
+            splats.size(), sizeof(QuaternionicSplat), sizeof(CovarianceSplat));
+    // The source vector is released here; splats belongs to the caller.
+    return true;
+}
+
+static void place_plant_for_fixed_camera(std::vector<CovarianceSplat>& splats)
+{
+    // Loading rejects empty scenes; the plant's metadata gives its longest extent as one unit.
+    float minimum[3];
+    float maximum[3];
+    for (std::size_t axis = 0; axis < 3; ++axis) {
+        minimum[axis] = maximum[axis] = splats.front().position[axis];
+    }
+    for (const CovarianceSplat& splat : splats) {
+        for (std::size_t axis = 0; axis < 3; ++axis) {
+            minimum[axis] = std::min(minimum[axis], splat.position[axis]);
+            maximum[axis] = std::max(maximum[axis], splat.position[axis]);
+        }
+    }
+    const float center[3] = {
+        0.5f * minimum[0] + 0.5f * maximum[0],
+        0.5f * minimum[1] + 0.5f * maximum[1],
+        0.5f * minimum[2] + 0.5f * maximum[2],
+    };
+    for (CovarianceSplat& splat : splats) {
+        // A half turn around X maps the plant's -Y up to +Y up; place its center at Z = 2 in front of the camera.
+        splat.position[0] -= center[0];
+        splat.position[1] = -(splat.position[1] - center[1]);
+        splat.position[2] = 2.0f - (splat.position[2] - center[2]);
+        // Sigma' = A * Sigma * transpose(A), with A = diag(1, -1, -1); only xy and xz change sign.
+        splat.covariance[1] = -splat.covariance[1];
+        splat.covariance[2] = -splat.covariance[2];
+    }
+}
 
 int main(int, char**)
 {
@@ -44,14 +103,20 @@ int main(int, char**)
         SDL_Log("Shader loading failed: %s", SDL_GetError());
     }
 
-    // Attempt demo setup only if shaders properly loaded
-    GaussianSplatDemo demo = {};
+    // CPU vectors own the scene during loading and preprocessing; the renderer copies the result into its GPU buffer.
+    SplatRenderer renderer = {};
     if (running) {
-        SDL_GPUTextureFormat target_format = SDL_GetGPUSwapchainTextureFormat(device, window);
-        running = init_gaussian_splat(device, target_format, shaders, demo);
-        if (!running) {
-            SDL_Log("Demo setup failed: %s", SDL_GetError());
+        std::vector<CovarianceSplat> splats;
+        running = load_plant(splats);
+        if (running) {
+            place_plant_for_fixed_camera(splats);
+            SDL_GPUTextureFormat target_format = SDL_GetGPUSwapchainTextureFormat(device, window);
+            running = init_splat_renderer(device, target_format, shaders, splats, renderer);
         }
+        if (!running) {
+            SDL_Log("Plant setup failed: %s", SDL_GetError());
+        }
+        // On success the transfer buffer already has a copy, so the CPU vector can be released before the render loop.
     }
 
     int exit_code = running ? 0 : 1;
@@ -94,8 +159,8 @@ int main(int, char**)
             continue;
         }
 
-        // Let the demo record its rendering into this frame's texture.
-        render_gaussian_splat(demo, commands, swapchain_texture, width, height);
+        // Let the renderer record its rendering into this frame's texture.
+        render_splats(renderer, commands, swapchain_texture, width, height);
 
         // Submission executes the commands and presents the acquired swapchain image.
         if (!SDL_SubmitGPUCommandBuffer(commands)) {
@@ -107,7 +172,7 @@ int main(int, char**)
 
     SDL_WaitForGPUIdle(device);
     // Release all content resources while the device that owns them is still alive.
-    destroy_gaussian_splat(device, demo);
+    destroy_splat_renderer(device, renderer);
     destroy_shaders(device, shaders);
     SDL_ReleaseWindowFromGPUDevice(device, window);
     SDL_DestroyGPUDevice(device);

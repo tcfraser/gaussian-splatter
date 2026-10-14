@@ -16,23 +16,22 @@ From the repository directory on a Windows drive, run in WSL Bash:
 ./build.sh
 ```
 
-## Example `.splat` format
+## The `.splat` format
 
-The plant example uses the compact antimatter15 `.splat` layout described in the [format documentation](https://xeokit.github.io/sdk/docs/api/documents/formats.gaussiansplat.3D_Gaussian_Splatting_Format_Guide.html).
-The file contains consecutive 32-byte records, one per splat, with no header or trailer.
-Floats use little-endian byte order (the least significant byte comes first), matching our Windows x64 target.
+All examples use the `.splat` layout described in the [format documentation](https://xeokit.github.io/sdk/docs/api/documents/formats.gaussiansplat.3D_Gaussian_Splatting_Format_Guide.html).
+The `.splat` file contains consecutive 32-byte records, one per splat, with no header or trailer.
+Floats use little-endian byte order (the least significant byte comes first).
 
-| Byte offsets within a record | Storage | Meaning |
+| Byte offsets | Storage | Meaning |
 |---|---|---|
 | 0–11 | Three 32-bit floats | Position: x, y, z |
-| 12–23 | Three 32-bit floats | Scale: standard deviation along each of the splat's three local axes |
+| 12–23 | Three 32-bit floats | Scale: standard deviation for each of three local axes |
 | 24–27 | Four unsigned bytes | Red, green, blue, opacity |
 | 28–31 | Four unsigned bytes | Rotation quaternion in w, x, y, z order |
 
 Color and opacity are decoded by dividing each byte by `255.0f`.
 A quaternion represents a rotation using four components; decode each component with `(float(byte) - 128.0f) / 128.0f`, then normalize the quaternion to length one to compensate for byte rounding.
 Scales are already linear, and this format stores fixed RGB colors without spherical harmonics.
-
 The file size must be a multiple of 32 bytes, and the splat count is `file_size / 32`.
 For the plant example, `3,636,736 / 32 = 113,648` splats.
 
