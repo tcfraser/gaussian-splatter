@@ -11,10 +11,12 @@ struct GaussianSplat {
     float covariance[6];
 };
 
-// Owns the splat data and pipeline; main.cpp owns the device and frame textures.
+// Owns the input splats, projected results, and both pipelines; main.cpp owns the device and frame textures.
 struct GaussianSplatDemo {
+    SDL_GPUComputePipeline* projection_pipeline = nullptr;
     SDL_GPUGraphicsPipeline* pipeline = nullptr;
     SDL_GPUBuffer* splat_buffer = nullptr;
+    SDL_GPUBuffer* projected_splat_buffer = nullptr;
 };
 
 bool init_gaussian_splat(SDL_GPUDevice* device, SDL_GPUTextureFormat target_format, const Shaders& shaders, GaussianSplatDemo& demo);

@@ -12,6 +12,10 @@ cmake-build-*/
 *.d
 *.lo
 
+# Compiled shaders
+*.dxbc
+*.dxil
+
 # Executables and libraries
 *.exe
 *.out

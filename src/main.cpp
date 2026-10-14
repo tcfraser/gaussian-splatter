@@ -13,7 +13,7 @@ int main(int, char**)
     }
 
     // Attempt window creation
-    SDL_Window* window = SDL_CreateWindow("Hello, SDL3!", 800, 600, 0);
+    SDL_Window* window = SDL_CreateWindow("Gaussian Splat Renderer", 800, 600, 0);
     if (!window) {
         SDL_Log("SDL_CreateWindow failed: %s", SDL_GetError());
         SDL_Quit();
@@ -21,7 +21,7 @@ int main(int, char**)
     }
 
     // Attempt setting up GPU device with Direct3D 12 API
-    SDL_GPUDevice* device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXBC, false, "direct3d12");
+    SDL_GPUDevice* device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL, false, "direct3d12");
     if (!device) {
         SDL_Log("SDL_CreateGPUDevice failed: %s", SDL_GetError());
         SDL_DestroyWindow(window);
