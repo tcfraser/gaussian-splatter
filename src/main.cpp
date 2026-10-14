@@ -6,8 +6,13 @@
 #include "shader.h"
 #include "splat_renderer.h"
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
+    if (argc != 2) {
+        SDL_Log("Usage: main.exe <path-to-file.splat>");
+        return 1;
+    }
+
     // Attempt SDL initialization
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("SDL_Init failed: %s", SDL_GetError());
@@ -46,11 +51,11 @@ int main(int, char**)
         SDL_Log("Shader loading failed: %s", SDL_GetError());
     }
 
-    // The demo chooses and prepares its content and owns the resulting renderer resources.
+    // The demo prepares the requested file and owns the resulting renderer resources.
     Demo demo = {};
     if (running) {
         SDL_GPUTextureFormat target_format = SDL_GetGPUSwapchainTextureFormat(device, window);
-        running = load_demo(device, target_format, shaders, demo);
+        running = load_demo(device, target_format, shaders, argv[1], demo);
         if (!running) {
             SDL_Log("Demo loading failed: %s", SDL_GetError());
         }
@@ -102,8 +107,8 @@ int main(int, char**)
 
         // Update once per drawable frame; real elapsed time also includes any interval spent minimized.
         update_timer(timer, SDL_GetTicksNS());
-        update_demo(demo, timer);
         update_camera_projection(demo.camera, width, height);
+        update_demo(demo, timer);
 
         // Let the renderer upload the camera and record its rendering into this frame's texture.
         if (!render_splats(demo.renderer, commands, swapchain_texture, demo.camera)) {
