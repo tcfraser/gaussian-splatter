@@ -26,10 +26,11 @@ High-performance rendering is a goal, but clarity and incremental learning shoul
 # Implementation and verification
 
 - Leave compilation, running executables, and testing to the user unless explicitly asked to execute those commands.
-- Keep dependencies minimal and explain the role of each new dependency.
+- Keep external dependencies minimal and explain the role of each new dependency. Necessary internal dependencies are expected and should not be avoided.
 - Document build and run instructions as the workflow is established. 
 - Do not assume compilers, CUDA, SDL3, or environment configuration are already present.
 - Keep README.md limited to external dependencies, how to install them, and how to call the build script. Update it whenever a dependency is introduced or changed.
 
 # Style
+- Prefer conventional, straightforward patterns; do not introduce unusual approaches for marginal benefits. Use direct header includes for necessary internal dependencies.
 - Never break lines in the middle of a sentence, assume I will read files with line wrapping on.
