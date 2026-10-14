@@ -1,5 +1,13 @@
 # Gaussian splat renderer
 
+<video src="outputs/summer%20lilac.mp4" controls muted loop playsinline width="800"></video>
+
+[Watch the Summer Lilac example (MP4)](<outputs/summer lilac.mp4>)
+
+| Plant | The Fruit Bowl |
+|---|---|
+| ![Plant rendered as Gaussian splats](outputs/plant.png) | ![Fruit bowl rendered as Gaussian splats](<outputs/the fruit bowl.png>) |
+
 ## Overview
 
 This project is a small barebones project for me to learn how 3D Gaussian Splats are rendered.
