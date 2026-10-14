@@ -6,6 +6,8 @@
 struct Shaders {
     SDL_GPUShader* triangle_vertex = nullptr;
     SDL_GPUShader* triangle_fragment = nullptr;
+    SDL_GPUShader* project_splat_vertex = nullptr;
+    SDL_GPUShader* draw_splat_fragment = nullptr;
 };
 
 // Call once with an empty Shaders; compiled filenames are listed in shader.cpp.

@@ -2,7 +2,7 @@
 
 #include <string>
 
-static SDL_GPUShader* load_shader(SDL_GPUDevice* device, const char* filename, SDL_GPUShaderStage stage)
+static SDL_GPUShader* load_shader(SDL_GPUDevice* device, const char* filename, SDL_GPUShaderStage stage, Uint32 num_uniform_buffers = 0)
 {
     // build.sh compiles the HLSL sources and places the bytecode beside main.exe.
     const char* base_path = SDL_GetBasePath();
@@ -22,7 +22,8 @@ static SDL_GPUShader* load_shader(SDL_GPUDevice* device, const char* filename, S
     info.entrypoint = "main";
     info.format = SDL_GPU_SHADERFORMAT_DXBC;
     info.stage = stage;
-    // These shaders use no samplers, storage resources, or uniform buffers, so their resource counts remain zero.
+    info.num_uniform_buffers = num_uniform_buffers;
+    // These shaders use vertex attributes and optional uniforms; other resource counts remain zero.
     SDL_GPUShader* shader = SDL_CreateGPUShader(device, &info);
     SDL_free(code);
     return shader;
@@ -40,11 +41,27 @@ bool load_shaders(SDL_GPUDevice* device, Shaders& shaders)
         destroy_shaders(device, shaders);
         return false;
     }
+    shaders.project_splat_vertex = load_shader(device, "project_splat.vert.dxbc", SDL_GPU_SHADERSTAGE_VERTEX, 1);
+    if (!shaders.project_splat_vertex) {
+        destroy_shaders(device, shaders);
+        return false;
+    }
+    shaders.draw_splat_fragment = load_shader(device, "draw_splat.frag.dxbc", SDL_GPU_SHADERSTAGE_FRAGMENT);
+    if (!shaders.draw_splat_fragment) {
+        destroy_shaders(device, shaders);
+        return false;
+    }
     return true;
 }
 
 void destroy_shaders(SDL_GPUDevice* device, Shaders& shaders)
 {
+    if (shaders.draw_splat_fragment) {
+        SDL_ReleaseGPUShader(device, shaders.draw_splat_fragment);
+    }
+    if (shaders.project_splat_vertex) {
+        SDL_ReleaseGPUShader(device, shaders.project_splat_vertex);
+    }
     if (shaders.triangle_fragment) {
         SDL_ReleaseGPUShader(device, shaders.triangle_fragment);
     }

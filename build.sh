@@ -16,9 +16,11 @@ mkdir build
 cmd.exe /d /c call 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat' \
     '&&' fxc /nologo /T vs_5_1 /E main /Fo 'build\triangle.vert.dxbc' 'src\shaders\triangle.vert.hlsl' \
     '&&' fxc /nologo /T ps_5_1 /E main /Fo 'build\triangle.frag.dxbc' 'src\shaders\triangle.frag.hlsl' \
+    '&&' fxc /nologo /T vs_5_1 /E main /Fo 'build\project_splat.vert.dxbc' 'src\shaders\project_splat.vert.hlsl' \
+    '&&' fxc /nologo /T ps_5_1 /E main /Fo 'build\draw_splat.frag.dxbc' 'src\shaders\draw_splat.frag.hlsl' \
     '&&' cl /nologo /std:c++17 /EHsc /W4 \
     '/Ideps\SDL3-3.4.18\include' \
-    /Fobuild/ '/Febuild\main.exe' 'src\main.cpp' 'src\shader.cpp' 'src\triangle_demo.cpp' \
+    /Fobuild/ '/Febuild\main.exe' 'src\main.cpp' 'src\shader.cpp' 'src\triangle_demo.cpp' 'src\gaussian_splat.cpp' \
     'deps\SDL3-3.4.18\lib\x64\SDL3.lib' \
     /link /SUBSYSTEM:CONSOLE
 

@@ -2,7 +2,7 @@
 #include <SDL3/SDL_main.h>
 
 #include "shader.h"
-#include "triangle_demo.h"
+#include "gaussian_splat.h"
 
 int main(int, char**)
 {
@@ -45,10 +45,10 @@ int main(int, char**)
     }
 
     // Attempt demo setup only if shaders properly loaded
-    TriangleDemo demo = {};
+    GaussianSplatDemo demo = {};
     if (running) {
         SDL_GPUTextureFormat target_format = SDL_GetGPUSwapchainTextureFormat(device, window);
-        running = init_triangle_demo(device, target_format, shaders, demo);
+        running = init_gaussian_splat(device, target_format, shaders, demo);
         if (!running) {
             SDL_Log("Demo setup failed: %s", SDL_GetError());
         }
@@ -79,7 +79,9 @@ int main(int, char**)
 
         // The swapchain supplies the texture that will be displayed in the window.
         SDL_GPUTexture* swapchain_texture = nullptr;
-        if (!SDL_WaitAndAcquireGPUSwapchainTexture(commands, window, &swapchain_texture, nullptr, nullptr)) {
+        Uint32 width = 0;
+        Uint32 height = 0;
+        if (!SDL_WaitAndAcquireGPUSwapchainTexture(commands, window, &swapchain_texture, &width, &height)) {
             SDL_Log("SDL_WaitAndAcquireGPUSwapchainTexture failed: %s", SDL_GetError());
             SDL_CancelGPUCommandBuffer(commands);
             exit_code = 1;
@@ -93,7 +95,7 @@ int main(int, char**)
         }
 
         // Let the demo record its rendering into this frame's texture.
-        render_triangle_demo(demo, commands, swapchain_texture);
+        render_gaussian_splat(demo, commands, swapchain_texture, width, height);
 
         // Submission executes the commands and presents the acquired swapchain image.
         if (!SDL_SubmitGPUCommandBuffer(commands)) {
@@ -105,7 +107,7 @@ int main(int, char**)
 
     SDL_WaitForGPUIdle(device);
     // Release all content resources while the device that owns them is still alive.
-    destroy_triangle_demo(device, demo);
+    destroy_gaussian_splat(device, demo);
     destroy_shaders(device, shaders);
     SDL_ReleaseWindowFromGPUDevice(device, window);
     SDL_DestroyGPUDevice(device);
