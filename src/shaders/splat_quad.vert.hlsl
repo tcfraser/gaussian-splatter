@@ -1,15 +1,14 @@
 #include "splat_varyings.hlsli"
+#include "camera.hlsli"
 
 // Build a quad from the center and bounds already computed for this splat.
 // The shared uniform data for describing the camera
 // register(b0, space1) tells the GPU where the CPU has sent the uniform data.
 // -- b0 indicates a constant buffer bound to slot 0
 // -- space1 must be used for all vertex shaders (see https://wiki.libsdl.org/SDL3/SDL_CreateGPUShader)
-cbuffer Projection : register(b0, space1)
+cbuffer CameraUniform : register(b0, space1)
 {
-    float2 viewport_size; // (width, height) of viewport in pixels
-    float focal_length;   // used by the compute shader; retained here to share the CPU uniform layout
-    float near_plane;     // used by the compute shader
+    Camera camera;
 };
 
 // The compute shader's output buffer supplies these attributes, advancing once per splat instance.
@@ -39,7 +38,7 @@ SplatVaryings main(ProjectedSplatInput input, uint vertex_id : SV_VertexID)
     float2 pixel_position = input.center + output.pixel_offset;
 
     // Convert pixels to clip coordinates.
-    output.position = float4(2.0 * pixel_position.x / viewport_size.x - 1.0, 1.0 - 2.0 * pixel_position.y / viewport_size.y, 0.5, 1.0);
+    output.position = float4(2.0 * pixel_position.x / camera.viewport_size.x - 1.0, 1.0 - 2.0 * pixel_position.y / camera.viewport_size.y, 0.5, 1.0);
     output.color_opacity = input.color_opacity;
     output.inverse_covariance = input.inverse_covariance;
     return output;

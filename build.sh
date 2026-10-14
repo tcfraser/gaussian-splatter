@@ -28,7 +28,7 @@ cmd.exe /d /c call 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildToo
     '&&' 'deps\dxc\bin\x64\dxc.exe' -T ps_6_2 -HV 2021 -E main -Fo 'build\draw_splat.frag.dxil' 'src\shaders\draw_splat.frag.hlsl' \
     '&&' cl /nologo /std:c++17 /EHsc /W4 \
     '/Ideps\SDL3-3.4.18\include' \
-    /Fobuild/ '/Febuild\main.exe' 'src\main.cpp' 'src\shader.cpp' 'src\triangle_demo.cpp' 'src\splat_format_handler.cpp' 'src\splat_renderer.cpp' \
+    /Fobuild/ '/Febuild\main.exe' 'src\main.cpp' 'src\demo.cpp' 'src\camera.cpp' 'src\shader.cpp' 'src\triangle_demo.cpp' 'src\splat_format_handler.cpp' 'src\splat_renderer.cpp' \
     'deps\SDL3-3.4.18\lib\x64\SDL3.lib' \
     /link /SUBSYSTEM:CONSOLE
 

@@ -1,7 +1,7 @@
 #include "splat_renderer.h"
+#include "camera.h"
 #include "splat_format.h"
 
-#include <cmath>
 #include <cstddef>
 #include <cstring>
 #include <vector>
@@ -9,14 +9,6 @@
 constexpr Uint32 PROJECTION_THREADS = 64; // Matches numthreads in project_splat.comp.hlsl.
 // This renderer dispatches along X only; Direct3D 12 allows at most 65,535 groups along one axis.
 constexpr Uint32 MAX_SPLATS = 65535 * PROJECTION_THREADS;
-constexpr float PI = 3.14159265f;
-
-// Matches the 16-byte Projection uniform buffer in the compute and vertex shaders.
-struct Projection {
-    float viewport_size[2];
-    float focal_length;
-    float near_plane;
-};
 
 // Written by the compute shader and read as instance attributes by the vertex shader; all positions are in pixels.
 struct ProjectedSplat {
@@ -181,16 +173,10 @@ bool init_splat_renderer(SDL_GPUDevice* device, SDL_GPUTextureFormat target_form
     return true;
 }
 
-void render_splats(const SplatRenderer& renderer, SDL_GPUCommandBuffer* commands, SDL_GPUTexture* target_texture, Uint32 width, Uint32 height)
+void render_splats(const SplatRenderer& renderer, SDL_GPUCommandBuffer* commands, SDL_GPUTexture* target_texture, const Camera& camera)
 {
-    // A 60-degree vertical field of view; using the actual texture height gives focal length in pixels.
-    Projection projection = {};
-    projection.viewport_size[0] = static_cast<float>(width);
-    projection.viewport_size[1] = static_cast<float>(height);
-    projection.focal_length = 0.5f * static_cast<float>(height) / std::tan(PI / 6.0f);
-    projection.near_plane = 0.1f;
-
-    SDL_PushGPUComputeUniformData(commands, 0, &projection, sizeof(projection));
+    // Push the current camera every frame; the static splat buffer remains in world coordinates.
+    SDL_PushGPUComputeUniformData(commands, 0, &camera, sizeof(camera));
     SDL_GPUStorageBufferReadWriteBinding output_binding = {};
     output_binding.buffer = renderer.projected_splat_buffer;
     // Every result is overwritten; cycling lets SDL use another allocation if a previous frame still reads this one.
@@ -203,7 +189,7 @@ void render_splats(const SplatRenderer& renderer, SDL_GPUCommandBuffer* commands
     // End the compute pass before rendering so SDL can make its writes visible to the vertex input stage.
     SDL_EndGPUComputePass(compute_pass);
 
-    SDL_PushGPUVertexUniformData(commands, 0, &projection, sizeof(projection));
+    SDL_PushGPUVertexUniformData(commands, 0, &camera, sizeof(camera));
 
     SDL_GPUColorTargetInfo target = {};
     target.texture = target_texture;
