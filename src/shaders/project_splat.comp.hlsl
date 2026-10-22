@@ -78,6 +78,14 @@ ProjectedSplat project_splat(CovarianceSplat input)
     // -- three standard deviations suffice here.
     output.half_extent = 3.0 * sqrt(float2(covariance_xx, covariance_yy));
     output.center = camera.principal_point + projected_scale * float2(view_position.x, -view_position.y);
+
+    // // Shading with depth info instead of color info
+    // // Temperature ramp: near dark red, through yellow/green/cyan, to far dark blue.
+    // const float depth_expansion = 3.0; // 1.0 = original range; larger values increase color contrast.
+    // float depth = saturate((view_position.z - camera.near_plane) / (camera.far_plane - camera.near_plane));
+    // depth = saturate(0.5 + (depth - 0.5) * depth_expansion);
+    // output.color_opacity = float4(saturate(1.5 - abs(4.0 * (1.0 - depth) - float3(3.0, 2.0, 1.0))), color_opacity.a);
+
     output.color_opacity = color_opacity;
     output.inverse_covariance = float3(covariance_yy, -covariance_xy, covariance_xx) / determinant;
 

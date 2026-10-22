@@ -102,8 +102,9 @@ void update_demo(Demo& demo, const Timer& timer)
     // A tangent from the camera to the sphere gives sin(half_fov) = radius / distance.
     const float fitted_distance = FRAMING_MARGIN * demo.scene_radius / std::sin(half_fov);
     const float orbit_radius = ORBIT_DISTANCE_SCALE * fitted_distance;
-    camera.near_plane = 0.01f * demo.scene_radius;
-    camera.far_plane = orbit_radius + FRAMING_MARGIN * demo.scene_radius;
+    // Approximate the object's front and back using the existing scene radius.
+    camera.near_plane = std::max(0.01f * demo.scene_radius, orbit_radius - demo.scene_radius);
+    camera.far_plane = orbit_radius + demo.scene_radius;
 
     // Elapsed real time determines the angle, so orbit speed is independent of frame rate.
     const double phase = std::fmod(timer.elapsed_seconds, ORBIT_PERIOD_SECONDS) / ORBIT_PERIOD_SECONDS;

@@ -21,8 +21,6 @@ mkdir build
 # -- https://learn.microsoft.com/en-us/cpp/build/reference/compiler-options-listed-alphabetically
 # -- "/link" passes options to the linker, "/SUBSYSTEM:CONSOLE" is the default (https://learn.microsoft.com/en-us/cpp/build/reference/subsystem-specify-subsystem?view=msvc-170)
 cmd.exe /d /c call 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat' \
-    '&&' 'deps\dxc\bin\x64\dxc.exe' -T vs_6_2 -HV 2021 -E main -Fo 'build\triangle.vert.dxil' 'src\shaders\triangle.vert.hlsl' \
-    '&&' 'deps\dxc\bin\x64\dxc.exe' -T ps_6_2 -HV 2021 -E main -Fo 'build\triangle.frag.dxil' 'src\shaders\triangle.frag.hlsl' \
     '&&' 'deps\dxc\bin\x64\dxc.exe' -T cs_6_2 -HV 2021 -E main -Fo 'build\project_splat.comp.dxil' 'src\shaders\project_splat.comp.hlsl' \
     '&&' 'deps\dxc\bin\x64\dxc.exe' -T cs_6_2 -HV 2021 -E histogram -Fo 'build\radix_histogram.comp.dxil' 'src\shaders\radix_sort.comp.hlsl' \
     '&&' 'deps\dxc\bin\x64\dxc.exe' -T cs_6_2 -HV 2021 -E scan_blocks -Fo 'build\radix_scan_blocks.comp.dxil' 'src\shaders\radix_sort.comp.hlsl' \

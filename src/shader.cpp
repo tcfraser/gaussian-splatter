@@ -43,15 +43,6 @@ static bool load_compute_shader(const char* filename, ComputeShader& shader)
 bool load_shaders(SDL_GPUDevice* device, Shaders& shaders)
 {
     // Keep the filenames explicit; these match the outputs declared in build.sh.
-    shaders.triangle_vertex = load_shader(device, "triangle.vert.dxil", SDL_GPU_SHADERSTAGE_VERTEX);
-    if (!shaders.triangle_vertex) {
-        return false;
-    }
-    shaders.triangle_fragment = load_shader(device, "triangle.frag.dxil", SDL_GPU_SHADERSTAGE_FRAGMENT);
-    if (!shaders.triangle_fragment) {
-        destroy_shaders(device, shaders);
-        return false;
-    }
     shaders.project_splat_compute.code = load_shader_code("project_splat.comp.dxil", &shaders.project_splat_compute.code_size);
     if (!shaders.project_splat_compute.code) {
         destroy_shaders(device, shaders);
