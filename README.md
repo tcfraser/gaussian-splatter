@@ -22,9 +22,12 @@ From the repository directory in WSL Bash, build and pass the path to the `.spla
 ```
 ## Examples
 
-| Plant | The Fruit Bowl | The Summer Lilac |
-|---|---|---|
-| ![Plant rendered as Gaussian splats](outputs/plant.png) | ![Fruit bowl rendered as Gaussian splats](<outputs/the fruit bowl.png>) | https://github.com/user-attachments/assets/05344d56-851a-4d4c-a0be-42ef27c34fa8 |
+| Plant | The Fruit Bowl |
+|---|---|
+| ![Plant rendered as Gaussian splats](outputs/plant.png) | ![Fruit bowl rendered as Gaussian splats](<outputs/the fruit bowl.png>) |
+| The Summer Lilac | + Depth |
+|---|---|
+| https://github.com/user-attachments/assets/05344d56-851a-4d4c-a0be-42ef27c34fa8 | https://github.com/user-attachments/assets/bc3b5aee-6c2a-42d8-bc79-fb6ad97498c3 |
 
 ## Examples acknowledgements
 
